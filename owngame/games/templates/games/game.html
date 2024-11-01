@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+.my-table-style {
+  width: 80%; /* Задает ширину таблицы */
+  margin: 20px auto; /* Центрирует таблицу на странице */
+  border-collapse: collapse; /* Убирает двойные границы между ячейками */
+  table-layout: fixed;
+}
+
+.my-table-style th, .my-table-style td {
+  border: 1px solid black; /* Добавляет границы для ячеек */
+  padding: 8px; /* Добавляет отступы внутри ячеек */
+  text-align: center; /* Выравнивание текста в ячейках по левому краю */
+}
+.my-table-style th {
+    text-align: left;
+}
+</style>
+<div style="font-size: 40px;" class="text-box">{{ score }}</div>
+<table class="my-table-style">
+    {% for key, value in qs.items %}
+        <tr>
+            <th scope="row">{{ key }}</th>
+            {% for v in value %}
+                {% if v.question_value == 0 %}
+                    <td></td>
+                {% else %}
+                    <td><a href="{% url 'open_question' v.id %}" class="full-cell-link">{{ v.question_value }}</a></td>
+                {% endif %}
+            {% endfor %}
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}

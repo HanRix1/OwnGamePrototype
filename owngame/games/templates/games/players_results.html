@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{{ subtitle }}</h1>
+<ul>
+    {% for player in players %}
+    <li>
+        <h2>{{ player.initials }}</h2>
+        <p>{{ player.total_points }}</p>
+        <a href="{% url 'result_for_person' player.id %}">Результат игры</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+
+{% if next %}
+  {% if user.is_authenticated %}
+    <p>Your account doesn't have access to this page. To proceed,
+    please login with an account that has access.</p>
+  {% else %}
+    <p>Please login to see this page.</p>
+  {% endif %}
+{% endif %}
+<div>
+  <form class="center g-3" method="post" action="{% url 'login' %}">
+  {% csrf_token %}
+  <table align="center">
+  <tr>
+    <th scope="row">{{ form.username.label_tag }}</th>
+    <td>{{ form.username }}</td>
+  </tr>
+  <tr>
+    <th scope="row">{{ form.password.label_tag }}</th>
+    <td>{{ form.password }}</td>
+  </tr>
+  </table>
+  <div align="center" class="col-auto">
+    {% if form.errors %}
+    <h6>
+      <p>Логин или пароль не верный, повторите попытку!</p>
+    </h6>
+    {% endif %}
+    <a href="{% url 'registration' %}">Регистрация</a>
+    <button type="submit" class="btn btn-primary mb-3">Войти</button>
+  </div>
+  <input type="hidden" name="next" value="{{ next }}" />
+</form>
+</div>
+
+{# Assumes you setup the password_reset view in your URLconf #}
+<p><a href="{% url 'password_reset' %}"></a></p>
+
+{% endblock %}
