@@ -1,3 +1,4 @@
+from django.contrib import admin
 from django.urls import path, register_converter, include
 from . import views
 from . import convertors

@@ -1,24 +1,16 @@
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import logout, authenticate, login
 from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, redirect, get_object_or_404, get_list_or_404
 from django.db.models import Count
-from django.contrib.auth.decorators import login_required
-from random import randint
-from django.contrib.auth import logout, authenticate, login
-
-from games.models import Question, Theme, Lobby
+from games.models import Question, Theme, Lobby, GameSizes
 from .forms import GetAnswer, GameSize
-
-data_db = [
-    {'id': 1, 'initials': 'Околов Виталиий Александрович', 'total_points': 2000},
-    {'id': 2, 'initials': 'Басистый Илья Владимирович', 'total_points': 1800},
-    {'id': 3, 'initials': 'Щуров Дмитрий Витальевич', 'total_points': 1900},
-    {'id': 4, 'initials': 'Матюхин Никита Евгеньевич', 'total_points': 2200},
-]
+from random import randint
 
 
 def index(request):
-    menu = {'title': "Начать игру", 'url_name': 'size_init'}
+    menu = {'title': "Начать игру", 'url_name': 'start_game'}
     return render(request, 'games/index.html', context=menu)
 
 
@@ -30,10 +22,7 @@ def info(request):
 
 @login_required
 def results(request):
-    data = {'title': 'Резульаты',
-            'subtitle': 'Результаты викторин',
-            'players': data_db, }
-    return render(request, 'games/players_results.html', context=data)
+    return render(request, 'games/players_results.html', context={})
 
 
 @login_required
@@ -45,6 +34,35 @@ def show(request, player_id):
 def gamestart(request):
     data = {}
     qs_db = {}
+
+    session_info = Lobby.objects.filter(player_id=request.user.id, is_ended=False)
+    if not session_info:
+        rand_values = []
+        positions = []
+        sizes = get_object_or_404(GameSizes)
+        themes = get_list_or_404(Theme)
+
+        for i in range(sizes.theme_num):
+            buf = get_list_or_404(
+                Question.objects
+                .values('question_value')
+                .filter(theme_id=themes[i])
+                .annotate(total=Count('id'))
+            )
+            for j in range(sizes.question_num):
+                rand_values.append(randint(0, buf[j]['total'] - 1))
+                positions.append(buf[j]['total'])
+
+        new_session = Lobby(
+            player_id=request.user.id,
+            theme_num=sizes.theme_num,
+            question_num=sizes.question_num,
+            pos=positions,
+            rand_value=rand_values,
+            map=[0 for i in range(sizes.theme_num * sizes.question_num)]
+        )
+        new_session.save()
+
     session_info = get_object_or_404(Lobby.objects.filter(player_id=request.user.id, is_ended=False))
     data['score'] = session_info.score
     questions_list = get_list_or_404(
@@ -61,7 +79,7 @@ def gamestart(request):
         buf = []
         for j in range(session_info.question_num):
             question = questions_list[k + rand_values[m]]
-            if question.is_answered:
+            if question.id in session_info.map:
                 buf.append(Question())
             else:
                 flag = True
@@ -71,10 +89,7 @@ def gamestart(request):
         qs_db[themes[i].theme_name] = buf
 
     if not flag:
-        question = get_list_or_404(Question, is_answered=True)
-        for qs in question:
-            qs.is_answered = False
-            qs.save()
+        #блок обратки сценария по завершению игры
         session_info.is_ended = True
         session_info.save()
         return HttpResponse(session_info.score)
@@ -102,8 +117,7 @@ def raise_question(request, question_pk):
                 session_info.score += question.question_value
             else:
                 session_info.score -= question.question_value
-            question.is_answered = True
-            question.save()
+            session_info.map.append(question.id)
             session_info.save()
             return redirect('start_game')
     else:
@@ -118,10 +132,7 @@ def raise_question(request, question_pk):
 @login_required
 def size_init(request):
     data = {}
-    session_info = Lobby.objects.filter(player_id=request.user.id, is_ended=False)
-    if session_info:
-        return redirect('start_game')
-
+    sizes = get_object_or_404(GameSizes)
     if request.method == 'POST':
         form = GameSize(request.POST)
         if form.is_valid():
@@ -142,29 +153,11 @@ def size_init(request):
                         if len(query) < form.get_questions_num():
                             data['title'] = f'В базе данных недостаточн вопросов для темы {themes[i].theme_name}'
                             return render(request, 'games/games_settings.html', context=data)
-
-            rand_values = []
-            positions = []
-            for i in range(form.get_themes_num()):
-                buf = get_list_or_404(
-                    Question.objects
-                    .values('question_value')
-                    .filter(theme_id=themes[i])
-                    .annotate(total=Count('id'))
-                )
-                for j in range(form.get_questions_num()):
-                    rand_values.append(randint(0, buf[j]['total'] - 1))
-                    positions.append(buf[j]['total'])
-
-            session_info = Lobby(
-                player_id=request.user.id,
-                theme_num=form.get_themes_num(),
-                question_num=form.get_questions_num(),
-                pos=positions,
-                rand_value=rand_values
-            )
-            session_info.save()
-            return redirect('start_game')
+            size = get_object_or_404(GameSizes)
+            size.theme_num = form.get_themes_num()
+            size.question_num = form.get_questions_num()
+            size.save()
+            return redirect('/admin')
     else:
         form = GameSize()
 
@@ -175,12 +168,9 @@ def size_init(request):
 
 @login_required
 def custom_logout(request):
-    logout(request)
     session_info = Lobby.objects.filter(player_id=request.user.id, is_ended=False)
-    if session_info:
-        for el in session_info:
-            el.is_ended = True
-        session_info.save()
+    session_info.delete()
+    logout(request)
     return redirect('/')
 
 
@@ -203,7 +193,6 @@ def registration(request):
 
 def test(request):
     return render(request, 'games/test.html')
-
 
 # UPDATE games_question
 # SET is_answered = false

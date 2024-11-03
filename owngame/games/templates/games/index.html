@@ -4,5 +4,11 @@
     <div class="text-box" style="padding: 8px;">
         <a class="full-cell-link" href="{% url url_name %}">{{ title }}</a>
     </div>
-
+    {% if user.is_superuser %}
+    <p>
+        <div class="text-box" style="padding: 8px;">
+            <a class="full-cell-link" href="{% url 'size_init' %}">Параметры</a>
+        </div>
+    </p>
+{% endif %}
 {% endblock %}
