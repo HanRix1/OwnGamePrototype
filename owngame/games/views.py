@@ -1,9 +1,10 @@
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout, authenticate, login
+from django.db.models.functions import Rank, RowNumber
 from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, redirect, get_object_or_404, get_list_or_404
-from django.db.models import Count
+from django.db.models import Count, Max, Window
 from games.models import Question, Theme, Lobby, GameSizes
 from .forms import GetAnswer, GameSize
 from random import randint
@@ -22,7 +23,19 @@ def info(request):
 
 @login_required
 def results(request):
-    return render(request, 'games/players_results.html', context={})
+    data = {}
+    players_list = []
+    join = (Lobby.objects
+            .values('player_id_id__username')
+            .annotate(total=Max('score'))
+            .annotate(rank=Window(
+                expression=RowNumber(),
+                order_by=('-total',)
+            ))
+            .order_by('-total'))
+
+    data['players'] = join
+    return render(request, 'games/players_results.html', context=data)
 
 
 @login_required
@@ -35,7 +48,7 @@ def gamestart(request):
     data = {}
     qs_db = {}
 
-    session_info = Lobby.objects.filter(player_id=request.user.id, is_ended=False)
+    session_info = Lobby.objects.filter(player_id_id=request.user.id, is_ended=False)
     if not session_info:
         rand_values = []
         positions = []
@@ -54,7 +67,7 @@ def gamestart(request):
                 positions.append(buf[j]['total'])
 
         new_session = Lobby(
-            player_id=request.user.id,
+            player_id_id=request.user.id,
             theme_num=sizes.theme_num,
             question_num=sizes.question_num,
             pos=positions,
@@ -63,7 +76,7 @@ def gamestart(request):
         )
         new_session.save()
 
-    session_info = get_object_or_404(Lobby.objects.filter(player_id=request.user.id, is_ended=False))
+    session_info = get_object_or_404(Lobby.objects.filter(player_id_id=request.user.id, is_ended=False))
     data['score'] = session_info.score
     questions_list = get_list_or_404(
         Question.objects
@@ -92,7 +105,7 @@ def gamestart(request):
         #блок обратки сценария по завершению игры
         session_info.is_ended = True
         session_info.save()
-        return HttpResponse(session_info.score)
+        return redirect('result')
 
     data['qs'] = qs_db
     return render(request, 'games/game.html', context=data)
@@ -109,7 +122,7 @@ def page_not_found(request, exception):
 @login_required
 def raise_question(request, question_pk):
     question = get_object_or_404(Question, pk=question_pk)
-    session_info = get_object_or_404(Lobby.objects.filter(player_id=request.user.id, is_ended=False))
+    session_info = get_object_or_404(Lobby.objects.filter(player_id_id=request.user.id, is_ended=False))
     if request.method == 'POST':
         form = GetAnswer(request.POST)
         if form.is_valid():
@@ -168,7 +181,7 @@ def size_init(request):
 
 @login_required
 def custom_logout(request):
-    session_info = Lobby.objects.filter(player_id=request.user.id, is_ended=False)
+    session_info = Lobby.objects.filter(player_id_id=request.user.id, is_ended=False)
     session_info.delete()
     logout(request)
     return redirect('/')

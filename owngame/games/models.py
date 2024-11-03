@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.postgres.fields import ArrayField
+from django.contrib.auth.models import User
 
 
 class Theme(models.Model):
@@ -39,7 +40,7 @@ def empty_list():
 
 
 class Lobby(models.Model):
-    player_id = models.IntegerField(default=1, blank=False)
+    player_id = models.ForeignKey(User, on_delete=models.CASCADE)
     score = models.IntegerField(default=0)
     theme_num = models.IntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(9)])
     question_num = models.IntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(9)])

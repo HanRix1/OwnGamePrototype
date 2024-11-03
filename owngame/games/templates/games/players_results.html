@@ -1,14 +1,36 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>{{ subtitle }}</h1>
-<ul>
+<style>
+.my-table-style {
+  width: 80%; /* Задает ширину таблицы */
+  margin: 20px auto; /* Центрирует таблицу на странице */
+  border-collapse: collapse; /* Убирает двойные границы между ячейками */
+  table-layout: fixed;
+}
+
+.my-table-style th, .my-table-style td {
+  border: 1px solid black; /* Добавляет границы для ячеек */
+  padding: 8px; /* Добавляет отступы внутри ячеек */
+  text-align: center; /* Выравнивание текста в ячейках по левому краю */
+}
+.my-table-style th {
+    text-align: left;
+}
+</style>
+
+<h2>Топ игроков</h2>
+<table class="my-table-style">
     {% for player in players %}
-    <li>
-        <h2>{{ player.initials }}</h2>
-        <p>{{ player.total_points }}</p>
-        <a href="{% url 'result_for_person' player.id %}">Результат игры</a>
-    </li>
+    <tr>
+        <th>{{ player.rank }}</th>
+        <td>
+            {{ player.player_id_id__username }}
+        </td>
+        <td>
+            {{ player.total }}
+        </td>
+    </tr>
     {% endfor %}
-</ul>
+</table>
 {% endblock %}
