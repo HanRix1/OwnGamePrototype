@@ -80,10 +80,10 @@ WSGI_APPLICATION = 'owngame.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "examples_db",
-        "USER": "hanrix",
-        "PASSWORD": "hanrix",
-        "HOST": "localhost",
+        "NAME": os.getenv("DATABASE_NAME"),
+        "USER": "hanrix1",
+        "PASSWORD": "password",
+        "HOST": "postgres",
         "PORT": "5432",
     }
 }
